@@ -34,7 +34,7 @@ function push_hub_schema() {
     'indexes' => array(
       'timestamp' => array('timestamp'),
       'topic' => array(array('topic', 255)),
-      'topic_subscriber' => array(array('topic', 255), array('subscriber', 255)),
+      'topic_subscriber' => array(array('topic', 128), array('subscriber', 128)),
     ),
   );
   return $schema;
