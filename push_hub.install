@@ -1,0 +1,93 @@
+<?php
+
+/**
+ * @file
+ * Schema definitions install/update/uninstall hooks.
+ */
+
+/**
+ * Implementation of hook_schema().
+ */
+function push_hub_schema() {
+  $schema = array();
+  $schema['push_hub_subscriptions'] = array(
+    'description' => 'PubsubHubbub subscriptions.',
+    'fields' => array(
+      'timestamp' => array(
+        'type' => 'int',
+        'unsigned' => FALSE,
+        'default' => 0,
+        'not null' => TRUE,
+        'description' => 'Created timestamp.',
+      ),
+      'topic' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'description' => t('The topic URL (feed URL) of this subscription.'),
+      ),
+      'subscriber' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'description' => t('The subscriber\'s notification URL.'),
+      ),
+    ),
+    'indexes' => array(
+      'timestamp' => array('timestamp'),
+      'topic' => array(array('topic', 255)),
+      'topic_subscriber' => array(array('topic', 255), array('subscriber', 255)),
+    ),
+  );
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function push_hub_install() {
+  // Create tables.
+  drupal_install_schema('push_hub');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function push_hub_uninstall() {
+  // Remove tables.
+  drupal_uninstall_schema('push_hub');
+}
+
+/**
+ * Add a table for Pubsub subscriptions.
+ */
+function push_hub_update_6001() {
+  $ret = array();
+  $table = array(
+    'description' => 'PubsubHubbub subscriptions.',
+    'fields' => array(
+      'timestamp' => array(
+        'type' => 'int',
+        'unsigned' => FALSE,
+        'default' => 0,
+        'not null' => TRUE,
+        'description' => 'Created timestamp.',
+      ),
+      'topic' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'description' => t('The topic URL (feed URL) of this subscription.'),
+      ),
+      'subscriber' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'description' => t('The subscriber\'s notification URL.'),
+      ),
+    ),
+    'indexes' => array(
+      'timestamp' => array('timestamp'),
+      'topic' => array(array('topic', 255)),
+      'topic_subscriber' => array(array('topic', 255), array('subscriber', 255)),
+    ),
+  );
+  db_create_table($ret, 'push_hub_subscriptions', $table);
+  return $ret;
+}

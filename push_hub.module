@@ -1,0 +1,200 @@
+<?php
+
+/**
+ * @file
+ *
+ * @todo Support notifications from publishers over HTTP.
+ */
+
+include_once('PuSHHub.inc');
+define('PUSH_HUB_NOTIFICATIONS_QUEUE', 'push_hub_notifications');
+
+/**
+ * Implementation of hook_enable().
+ */
+function push_hub_enable() {
+  variable_set('queue_module_'. PUSH_HUB_NOTIFICATIONS_QUEUE, 'PuSHHub');
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function push_hub_menu() {
+  $items = array();
+  $items['pubsubhubbub/endpoint'] = array(
+   'page callback' => 'push_hub_endpoint',
+   'page arguments' => array(3, 4),
+   'access callback' => 'user_access',
+   'access arguments' => array('access content'), // @todo Specific permission
+   'file' => 'push_hub.pages.inc',
+   'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_cron().
+ */
+function push_hub_cron() {
+  push_hub()->expire();
+}
+
+/**
+ * Implementation of hook_cron_queue_info().
+ * Invoked by drupal_queue module if present.
+ */
+function push_hub_cron_queue_info() {
+  $queues = array();
+  $queues[PUSH_HUB_NOTIFICATIONS_QUEUE] = array(
+    'worker callback' => 'push_hub_notify_subscriber',
+    'time' => 15,
+  );
+  return $queues;
+}
+
+/**
+ * Implementation of hook_push_hub_drupal_queue_load_classes().
+ */
+function push_hub_drupal_queue_load_classes() {
+  module_load_include('inc', 'push_hub', 'PuSHHubQueue');
+}
+
+/**
+ * Notify subscribers.
+ *
+ * @param $topic
+ *   URL of the topic that changed.
+ * @param $changed
+ *   The full or partial feed that contains the changed elements.  If NULL,
+ *   a light ping (without any content) will be issued to subscriber and
+ *   subscriber is expected to fetch content from publisher. Light pings are
+ *   not pubsubhubbub spec conform.
+ * @param $batch
+ *   Set to true to use browser based batching, otherwise notifications will be
+ *   queued for execution cron.
+ *
+ * @todo Support batching, queue failing notifications for later.
+ */
+function push_hub_notify($topic, $changed = NULL, $batch = FALSE) {
+  if ($batch) {
+    $operations = array();
+    foreach (push_hub()->allSubscribers($topic) as $subscriber) {
+      $operations[] = array(
+        'push_hub_notify_subscriber_batchapi', array(array('subscriber' => $subscriber, 'changed' => $changed)),
+      );
+    }
+    $batch = array(
+      'title' => t('Updating account'),
+      'operations' => $operations
+      );
+    batch_set($batch);
+  }
+  else {
+    foreach (push_hub()->allSubscribers($topic) as $subscriber) {
+      push_hub_queue()->createItem(array('subscriber' => $subscriber, 'changed' => $changed));
+    }
+  }
+}
+
+/**
+ * Batch API callback for push_hub_notify_subscriber().
+ */
+function push_hub_notify_subscriber_batchapi($info, &$context) {
+  push_hub_notify_subscriber($info);
+  $context['finished'] = TRUE;
+}
+
+/**
+ * Notify subscriber, used as queue callback. The absence of a topic may
+ * be confusing: A subscriber URL is unique to a topic URL, therefore it is not
+ * necessary to supply subscriber and topic for issueing a notification.
+ *
+ * @param $info
+ *   An array with a key 'subscriber' containing the subscriber callback URL and
+ *   an optional key 'changed' containing the changed content.
+ */
+function push_hub_notify_subscriber($info) {
+  if (!push_hub()->notify($info['subscriber'], isset($info['content']) ? $info['content'] : NULL)) {
+    // On failure, queue for later notification.
+    push_hub_queue()->createItem($info, time() + 5 * 60);
+  }
+}
+
+/**
+ * Instantiates a Drupal queue for push_hub.
+ */
+function push_hub_queue() {
+  drupal_queue_include();
+  return drupal_queue_get(PUSH_HUB_NOTIFICATIONS_QUEUE);
+}
+
+/**
+ * Instantiates a PuSHHub object.
+ */
+function push_hub() {
+  return PuSHHub::instance(PuSHHubSubscriptions::instance());
+}
+
+/**
+ * A PuSHHub Subscriptions.
+ */
+class PuSHHubSubscriptions implements PuSHHubSubscriptionsInterface {
+  /**
+   * Singleton.
+   */
+  public function instance() {
+    static $subscriptions;
+    if (empty($subscriptions)) {
+      $subscriptions = new PuSHHubSubscriptions();
+    }
+    return $subscriptions;
+  }
+
+  /**
+   * Protect constructor.
+   */
+  protected function __construct() {
+  }
+
+  /**
+   * Save a subscription.
+   */
+  public function save($topic, $subscriber) {
+    $this->delete($topic, $subscriber);
+    $subscription = array(
+      'topic' => $topic,
+      'subscriber' => $subscriber,
+      'timestamp' => time(),
+    );
+    drupal_write_record('push_hub_subscriptions', $subscription);
+  }
+
+  /**
+   * Delete a subscription.
+   */
+  public function delete($topic, $subscriber) {
+    db_query("DELETE FROM {push_hub_subscriptions} WHERE topic = '%s' AND subscriber = '%s'", $topic, $subscriber);
+  }
+
+  /**
+   * Find all subscriber URLs for a given topic URL.
+   *
+   * @return
+   *   An array of subscriber URLs.
+   */
+  public function all($topic) {
+    $subscribers = array();
+    $result = db_query("SELECT subscriber FROM {push_hub_subscriptions} WHERE topic = '%s'", $topic);
+    while ($row = db_fetch_object($result)) {
+      $subscribers[] = $row->subscriber;
+    }
+    return $subscribers;
+  }
+
+  /**
+   * Expire subscriptions.
+   */
+  public function expire($time) {
+    db_query("DELETE FROM {push_hub_subscriptions} WHERE timestamp < %d", time() - $time);
+  }
+}
