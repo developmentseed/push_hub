@@ -1,4 +1,4 @@
 name = "PubSubHubbub Hub"
 description = "Allows Drupal to act as a PubsubHubbub hub."
-depencencies[] = drupal_queue
+dependencies[] = drupal_queue
 core = 6.x
