@@ -155,6 +155,7 @@ class PuSHHub {
   protected function lightPing($url) {
     $request = curl_init($url);
     curl_setopt($request, CURLOPT_FOLLOWLOCATION, TRUE);
+    curl_setopt($request, CURLOPT_RETURNTRANSFER, TRUE);
     $data = curl_exec($request);
     $code = curl_getinfo($request, CURLINFO_HTTP_CODE);
     curl_close($request);
