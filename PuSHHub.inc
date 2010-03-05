@@ -5,8 +5,8 @@
  * PubsubHubbub library.
  */
 
-// TTL of a subscription.
-define('PUSH_HUB_LEASE_SECONDS', 3600*48);
+// TTL of a subscription - 6 months.
+define('PUSH_HUB_LEASE_SECONDS', 15768000);
 
 /**
  * A PubsubHubbub Hub.
