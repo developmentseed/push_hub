@@ -132,7 +132,7 @@ class PuSHHub {
                 ),
               );
     if (!empty($secret)) {
-      $params['http']['header'] .= "X-Hub-Signature: ". hash_hmac('sha1', $content, $secret) ."\n";
+      $params['http']['header'] .= "X-Hub-Signature: sha1=". hash_hmac('sha1', $content, $secret) ."\n";
     }
     $params['http']['header'] . "\n";
     $ctx = stream_context_create($params);
