@@ -102,7 +102,7 @@ class PuSHHub {
    */
   public function subscribe($post) {
     if (isset($post['hub_topic']) && isset($post['hub_callback']) && $this->verify($post)) {
-      $this->subscriptions->save($post['hub_topic'], $post['hub_callback'], isset($post['secret']) ? $post['secret'] : '');
+      $this->subscriptions->save($post['hub_topic'], $post['hub_callback'], isset($post['hub_secret']) ? $post['hub_secret'] : '');
       header('HTTP/1.1 204 "No Content"', null, 204);
       exit();
     }
@@ -128,12 +128,13 @@ class PuSHHub {
                   'method' => 'POST',
                   'content' => $content,
                   'header' => "Content-Type: application/atom+xml\n".
-                              "Content-Length: ". strlen($content) ."\n\n",
+                              "Content-Length: ". strlen($content) ."\n",
                 ),
               );
     if (!empty($secret)) {
-      $params['http']['header']['X-Hub-Signature'] = hash_hmac('sha1', $content, $secret);
+      $params['http']['header'] .= "X-Hub-Signature: ". hash_hmac('sha1', $content, $secret) ."\n";
     }
+    $params['http']['header'] . "\n";
     $ctx = stream_context_create($params);
     if ($fp = @fopen($url, 'rb', false, $ctx)) {
       $response = @stream_get_contents($fp);

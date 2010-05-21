@@ -114,7 +114,7 @@ function push_hub_notify_subscriber_batchapi($info, &$context) {
  *   an optional key 'changed' containing the changed content.
  */
 function push_hub_notify_subscriber($info) {
-  if (!push_hub()->notify($info['topic'], $info['subscriber'], isset($info['content']) ? $info['content'] : NULL)) {
+  if (!push_hub()->notify($info['topic'], $info['subscriber'], isset($info['changed']) ? $info['changed'] : NULL)) {
     // On failure, queue for later notification.
     push_hub_queue()->createItem($info, time() + 5 * 60);
   }
