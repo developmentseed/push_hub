@@ -101,7 +101,6 @@ class PuSHHub {
    *   A valid PubSubHubbub subscription request.
    */
   public function subscribe($post) {
-    error_log(print_r($post, true));
     if (isset($post['hub_topic']) && isset($post['hub_callback']) && $this->verify($post)) {
       $this->subscriptions->save($post['hub_topic'], $post['hub_callback'], isset($post['secret']) ? $post['secret'] : '');
       header('HTTP/1.1 204 "No Content"', null, 204);
