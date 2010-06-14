@@ -84,7 +84,7 @@ function push_hub_notify($topic, $changed = NULL, $batch = FALSE) {
       );
     }
     $batch = array(
-      'title' => t('Updating account'),
+      'title' => t('Notifying subscribers'),
       'operations' => $operations
       );
     batch_set($batch);
